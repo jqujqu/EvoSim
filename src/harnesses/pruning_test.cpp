@@ -175,7 +175,7 @@ downward_sampling_fs(const TreeHelper &th,
     for (size_t node_id = 0; node_id < n_nodes; ++node_id)
       for (size_t i = 0; i < seg_info[node_id].size(); ++i)
         state_counts[node_id][i] += !bp_states[node_id][i];
-}
+} 
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,11 +189,14 @@ posterior_sampling(const TreeHelper &th,
                    std::mt19937 &gen, vector<vector<size_t> > &state_counts) {
 
   const size_t n_nodes = th.subtree_sizes.size();
+  vector<bool> nodes_state(n_nodes, false);
+  nodes_state[0] = root_state;
 
   for (size_t node_id = 1; node_id < n_nodes; ++node_id) {
     const size_t n_intervals = seg_info[node_id].size();
-    bool par_state = root_state;
     
+    bool par_state = nodes_state[th.parent_ids[node_id]];
+    bool new_state = false;
     for (size_t m = 0; m < n_intervals; ++m) {
       // compute conditional posterior probability
       vector<vector<double> > P; // transition prob matrix
@@ -206,12 +209,13 @@ posterior_sampling(const TreeHelper &th,
       
       // generate random state at break point
       std::uniform_real_distribution<double> unif(0.0, 1.0);
-      bool new_state = (unif(gen) > p0);
+      new_state = (unif(gen) > p0);
       if (!new_state)
         state_counts[node_id][m]++;
       
       par_state = new_state;
     }
+    nodes_state[node_id] = new_state;
   }
 }
 
@@ -408,7 +412,7 @@ int main(int argc, const char **argv) {
       Environment env(paths[node_id][site-1], paths[node_id][site+1]);
       for (size_t i = 0; i < seg_info[node_id].size(); ++i) {
         out << th.node_names[node_id] << '\t' << i+1 << '\t'
-            << env.left[i] << '\t' << env.right[i] << '\t' << "0\t"
+            << env.left[i] << '\t' << env.right[i] << '\t'
             << 1.0 * all_bp_state0_fs[node_id][i] / n_paths_from_zero << '\t'
             << 1.0 * all_bp_state0[node_id][i] / n_paths_from_zero << '\t'
             << 1.0 * all_bp_state1_fs[node_id][i] /
